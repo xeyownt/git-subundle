@@ -106,7 +106,7 @@ function do_unbundle()
             if ! git -C "$GIT_DIR" | grep -q "^bundle$"; then
                 try git -C "$GIT_DIR" remote add bundle "$BUNDLE_FILE"
             fi
-            try git -C "$GIT_DIR" fetch bundle
+            try git -C "$GIT_DIR" fetch --recurse-submodules=no bundle
             try git -C "$GIT_DIR" bundle unbundle "$BUNDLE_FILE"        # Fetch does not fetch detached HEAD
         else
             try git clone -b $branch "$BUNDLE_FILE" -o bundle $GIT_DIR
