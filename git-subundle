@@ -92,6 +92,9 @@ function do_unbundle()
         echo "  -> directory '$GIT_DIR'"
         echo "  -> branch '$branch'"
         if [ -d "$GIT_DIR" ]; then
+            if ! git -C "$GIT_DIR" | grep -q "^bundle$"; then
+                try git -C "$GIT_DIR" remote add bundle "$BUNDLE_FILE"
+            fi
             try git -C "$GIT_DIR" fetch bundle
             try git -C "$GIT_DIR" bundle unbundle "$BUNDLE_FILE"        # Fetch does not fetch detached HEAD
         else
@@ -121,6 +124,9 @@ function do_unbundle()
         pushd "$PARENT_GIT_DIR"
 
         if [ -e "$MODULE/.git" ]; then
+            if ! git -C "$GIT_DIR" | grep -q "^bundle$"; then
+                try git -C "$GIT_DIR" remote add bundle "$BUNDLE_FILE"
+            fi
             try git -C "$MODULE" fetch bundle
             try git -C "$MODULE" bundle unbundle "$BUNDLE_FILE"           # Fetch does not fetch detached HEAD
         else
