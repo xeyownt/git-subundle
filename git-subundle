@@ -4,21 +4,22 @@ BASE="git subundle"
 
 die_usage()
 {
-    >&2 echo "Usage: \n$SYNOPSYS"
-    die "$@"
+    >&2 echo "$BASE: $@"
+    >&2 echo "Usage: $SYNOPSYS"
+    exit 1
 }
 
 die()
 {
     CODE=$1
     shift
-    >&2 echo "$BASE: ERROR -- $@"
+    >&2 echo "$BASE: $@"
     exit $CODE
 }
 
 try()
 {
-    >&2 echo "#### Trying '$@'"
+    [ -z "$DEBUG" ] || >&2 echo "#### Trying '$@'"
     "$@"
 
 }
@@ -36,19 +37,34 @@ function do_reset()
     done
 }
 
+function pushd_hush()
+{
+    pushd "$@" > /dev/null
+}
+
+function popd_hush()
+{
+    popd "$@" > /dev/null
+}
+
 function do_create()
 {
-    DIR="$1"
-    [ -d "$DIR" ] || die 1 "Directory '$DIR' not found."
+    REPO_DIR=$(readlink -e "$1")
+    [ -d "$REPO_DIR" ] || die 1 "Directory '$REPO_DIR' not found."
+    BUNDLE_BASE="${2%%.bundle}"
+    [ -n "$BUNDLE_BASE" ] || BUNDLE_BASE=$(basename "$1")        # Not REPO_DIR because readlink may alter basename
 
-    for d in $(find "$DIR" -name ".git"); do
-        GIT_DIR=${d%%/.git}
-        echo "Bundling repository '$GIT_DIR'..."
-        BUNDLE_FILE="${PWD}/${GIT_DIR////_}.bundle"
+    for DOT_GIT in $(find "$REPO_DIR" -name ".git"); do
+        GIT_DIR=${DOT_GIT%%/.git}
+        echo "Repository '$GIT_DIR'"
+        RELATIVE_DIR=${GIT_DIR##$REPO_DIR}
+        BUNDLE_FILE="${BUNDLE_BASE}${RELATIVE_DIR////_}.bundle"
+        echo "... creating file '$BUNDLE_FILE'."
+        BUNDLE_FILE=$(readlink -m "$BUNDLE_FILE")
 
-        pushd "$GIT_DIR"
+        pushd_hush "$GIT_DIR"
         try git bundle create "${BUNDLE_FILE}" --all $(git show-ref|grep " refs/remotes/bundle"|cut -d" " -f2|sed -r 's/$/../') |& sed -r '/^warning: .*is excluded by/d'
-        popd
+        popd_hush
     done
 }
 
@@ -71,7 +87,7 @@ function do_unbundle_helper()
         MODULE=$(basename ${MODULE_GIT_DIR})
 
         if [ -e "$MODULE_GIT_DIR/.git" ]; then
-            pushd "$MODULE_GIT_DIR"
+            pushd_hush "$MODULE_GIT_DIR"
             if ! git remote | grep -q "^bundle$"; then
                 try git remote add bundle "$BUNDLE_FILE"
             else
@@ -82,21 +98,21 @@ function do_unbundle_helper()
             fi
             try git -c fetch.prune=false fetch bundle
             try git bundle unbundle "$BUNDLE_FILE"           # Fetch does not fetch detached HEAD
-            popd
+            popd_hush
         else
             try git -C "$GIT_DIR" submodule init "$MODULE"
             try git -C "$GIT_DIR" config submodule."$MODULE".url $BUNDLE_FILE
             try git -C "$GIT_DIR" submodule update "$MODULE"
 
-            pushd "$MODULE_GIT_DIR"
+            pushd_hush "$MODULE_GIT_DIR"
             try git remote rename origin bundle
             try git bundle unbundle "$BUNDLE_FILE"           # Fetch does not fetch detached HEAD
-            popd
+            popd_hush
         fi
 
     else
         if [ -d "$GIT_DIR" ]; then
-            pushd "$GIT_DIR"
+            pushd_hush "$GIT_DIR"
 
             if ! git remote | grep -q "^bundle$"; then
                 # Remote bundle not found. Create one.
@@ -110,7 +126,7 @@ function do_unbundle_helper()
             try git -c fetch.prune=false fetch --recurse-submodules=no bundle
             try git bundle unbundle "$BUNDLE_FILE"        # Fetch does not fetch detached HEAD
 
-            popd
+            popd_hush
         else
             try git clone -b $branch "$BUNDLE_FILE" -o bundle $GIT_DIR
         fi
@@ -121,10 +137,10 @@ function do_unbundle_helper()
 
 function do_unbundle()
 {
-    BUNDLE_BASE="$1"
+    BUNDLE_BASE="${1%%.bundle}"
     [ -n "$BUNDLE_BASE" ] || die_usage 1 "Missing BUNDLE"
     DEST="$2"
-    [ -n "$DEST" ] || DEST=$BUNDLE_BASE
+    [ -n "$DEST" ] || DEST=$(basename "$BUNDLE_BASE")
     echo "Unbundling to '$DEST'..."
 
     GIT_DIR="$PWD/$DEST"
@@ -146,7 +162,9 @@ NAME
         $BASE - Create bundle including submodules.
 
 SYNOPSYS
-        $SYNOPSYS
+        $BASE [-h] [-b <name>] create [REPOSITORY] [BUNDLE_FILE]
+        $BASE [-h] [-b <name>] unbundle [REPOSITORY] [BUNDLE_FILE]
+        $BASE [-h] [-b <name>] reset [REPOSITORY]
 
 DESCRIPTION
         Create bundle 'BUNDLE_FILE.bundle' that contains also submodules.
@@ -158,25 +176,30 @@ DESCRIPTION
         -h
                 Print this help.
 
+        -d
+                Debug output.
+
 SEE ALSO
         git-bundle(1).
 __END__
 }
 
-SYNOPSYS="$BASE [-h] [-b <name>] create REPOSITORY\n"
-SYNOPSYS="$BASE [-h] [-b <name>] unbundle BUNDLE_FILE [REPOSITORY]\n"
-SYNOPSYS="$BASE [-h] [-b <name>] reset REPOSITORY"
+SYNOPSYS="$BASE [-hv] [-b <name>] create|unbundle|reset [BUNDLE_FILE] [REPOSITORY]"
 
 getOptions() {
     BUNDLE_REMOTE=
-    while getopts "hb:" flag
+    DEBUG=
+    while getopts "b:hd" flag
     do
         case $flag in 
             b) BUNDLE_REMOTE=$OPTARG
                 ;;
+            d) DEBUG=true
+                ;;
             h) usage_help
                 exit 0
                 ;;
+            *) die_usage "Unknown option."
         esac
     done
 }
@@ -189,7 +212,6 @@ shift $((OPTIND-1))
 ACTION=$1
 shift
 
-echo "BUNDLE_REMOTE is '$BUNDLE_REMOTE'"
 case "$ACTION" in
     "reset")
         do_reset "$@"
@@ -201,6 +223,6 @@ case "$ACTION" in
         do_unbundle "$@"
         ;;
     *)
-        die_usage 1 "Missing ACTION"
+        die_usage "Missing or unknown action '$ACTION'"
         ;;
 esac
