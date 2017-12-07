@@ -1,10 +1,10 @@
 #! /bin/bash
 
-BASE=git-subundle
+BASE="git subundle"
 
 die_usage()
 {
-    >&2 echo "Usage: $BASE [create [--all] DIRECTORY|unbundle BUNDLE]."
+    >&2 echo "Usage: \n$SYNOPSYS"
     die "$@"
 }
 
@@ -39,12 +39,6 @@ function do_reset()
 function do_create()
 {
     DIR="$1"
-    if [ "$DIR" == "--all" ]; then
-        ALL=true
-        shift
-        DIR="$1"
-    fi
-
     [ -d "$DIR" ] || die 1 "Directory '$DIR' not found."
 
     for d in $(find "$DIR" -name ".git"); do
@@ -145,9 +139,57 @@ function do_unbundle()
     [ -n "$FOUND" ] || die 1 "No bundle file found."
 }
 
+usage_help() {
+# 34567890123456789012345678901234567890123456789012345678901234567890123456789| No char under and beyond | !
+    cat <<- __END__
+NAME
+        $BASE - Create bundle including submodules.
 
-ACTION="$1"
+SYNOPSYS
+        $SYNOPSYS
+
+DESCRIPTION
+        Create bundle 'BUNDLE_FILE.bundle' that contains also submodules.
+
+        -b <name>
+                Use <name> as bundle remote name. If omitted, the default
+                remote name is 'bundle'.
+
+        -h
+                Print this help.
+
+SEE ALSO
+        git-bundle(1).
+__END__
+}
+
+SYNOPSYS="$BASE [-h] [-b <name>] create REPOSITORY\n"
+SYNOPSYS="$BASE [-h] [-b <name>] unbundle BUNDLE_FILE [REPOSITORY]\n"
+SYNOPSYS="$BASE [-h] [-b <name>] reset REPOSITORY"
+
+getOptions() {
+    BUNDLE_REMOTE=
+    while getopts "hb:" flag
+    do
+        case $flag in 
+            b) BUNDLE_REMOTE=$OPTARG
+                ;;
+            h) usage_help
+                exit 0
+                ;;
+        esac
+    done
+}
+
+BASEDIR=$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+### Parse options
+getOptions "$@"
+shift $((OPTIND-1))
+ACTION=$1
 shift
+
+echo "BUNDLE_REMOTE is '$BUNDLE_REMOTE'"
 case "$ACTION" in
     "reset")
         do_reset "$@"
