@@ -4,7 +4,7 @@ BASE=git-subundle
 
 die_usage()
 {
-    >&2 echo "Usage: $BASE [create DIRECTORY|unbundle BUNDLE]."
+    >&2 echo "Usage: $BASE [create [--all] DIRECTORY|unbundle BUNDLE]."
     die "$@"
 }
 
@@ -39,6 +39,11 @@ function do_reset()
 function do_create()
 {
     DIR="$1"
+    if [ "$DIR" == "--all" ]; then
+        ALL=true
+        shift
+        DIR="$1"
+    fi
 
     [ -d "$DIR" ] || die 1 "Directory '$DIR' not found."
 
@@ -56,13 +61,19 @@ function do_create()
             # Reference 'bundle' exists
             echo "Reference 'bundle' found."
             try git branch bundlehead
-            # git bundle create "${BUNDLE_FILE}" bundle..${branch}
-            try git bundle create "${BUNDLE_FILE}" bundle..$branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$branch$/d" | sed -r "s/^/bundle../")
+            if [ -n "$ALL" ]; then
+                try git bundle create "${BUNDLE_FILE}" --all bundle..
+            else
+                try git bundle create "${BUNDLE_FILE}" bundle..$branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$branch$/d" | sed -r "s/^/bundle../")
+            fi
             try git branch -d bundlehead
         else
             try git branch bundlehead
-            # No reference 'bundle'. Create brand new bundle
-            try git bundle create "${BUNDLE_FILE}" $branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$branch$/d")
+            if [ -n "$ALL" ]; then
+                try git bundle create "${BUNDLE_FILE}" --all
+            else
+                try git bundle create "${BUNDLE_FILE}" $branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$branch$/d")
+            fi
             try git branch -d bundlehead
         fi
         try git tag -f bundle HEAD
