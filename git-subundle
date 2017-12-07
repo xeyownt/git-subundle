@@ -56,6 +56,7 @@ function do_create()
 
         branch="$(git symbolic-ref HEAD 2>/dev/null)" || branch="HEAD"
         branch=${branch##refs/heads/}
+        escapedbranch=${branch////\\/}
         echo "... bundling from branch '$branch'."
         if git show-ref bundle &> /dev/null; then
             # Reference 'bundle' exists
@@ -64,7 +65,7 @@ function do_create()
             if [ -n "$ALL" ]; then
                 try git bundle create "${BUNDLE_FILE}" --all bundle..
             else
-                try git bundle create "${BUNDLE_FILE}" bundle..$branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$branch$/d" | sed -r "s/^/bundle../")
+                try git bundle create "${BUNDLE_FILE}" bundle..$branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$escapedbranch$/d" | sed -r "s/^/bundle../")
             fi
             try git branch -D bundlehead
         else
@@ -72,7 +73,7 @@ function do_create()
             if [ -n "$ALL" ]; then
                 try git bundle create "${BUNDLE_FILE}" --all
             else
-                try git bundle create "${BUNDLE_FILE}" $branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$branch$/d")
+                try git bundle create "${BUNDLE_FILE}" $branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$escapedbranch$/d")
             fi
             try git branch -D bundlehead
         fi
