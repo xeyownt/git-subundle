@@ -66,6 +66,7 @@ function ok() {
 }
 
 function fail() {
+    echo "${bldred}FAIL${txtrst}"
     die_status 1 "FAIL"
 }
 
@@ -82,21 +83,31 @@ function test_if_exists_dir() {
 function test_if_setup_ok() {
     pushd_hush "$1"
 
-    echo -n "${bldblk}... repo: testing that commit '$REPO_HEAD' exists..."
+    REPO=repo
+    echo -n "${bldblk}... $REPO: testing that commit '$REPO_HEAD' exists..."
     git rev-parse $REPO_HEAD &> /dev/null && ok || fail
-    echo -n "${bldblk}... repo: testing master branch..."
+    echo -n "${bldblk}... $REPO: testing master branch..."
     [ "$(git rev-parse master)" == $REPO_HEAD ] &> /dev/null && ok || fail
 
-    cd subrepo
-    echo -n "${bldblk}... subrepo: testing that commit '$SUBREPO_HEAD' exists..."
+    REPO=subrepo
+    cd $REPO
+    echo -n "${bldblk}... $REPO: testing that commit '$SUBREPO_HEAD' exists..."
     git rev-parse $SUBREPO_HEAD &> /dev/null && ok || fail
-    echo -n "${bldblk}... subrepo: testing master branch..."
+    echo -n "${bldblk}... $REPO: testing master branch..."
     [ "$(git rev-parse master)" == $SUBREPO_HEAD ] &> /dev/null && ok || fail
 
     popd_hush
 }
 
+function test_if_remote_url_ok() {
+    REPO=$1
+    echo -n "${bldblk}... $REPO: testing that remote '$2' exists and has correct URL..."
+    git -C "$1" remote -v | egrep -q "$2[[:space:]]+$3 " && ok || fail
+}
+
 function test_setup_helper() {
+
+    LEVEL=${2:-1}
 
     mkdir -p network cpu1 cpu2
     mkdir -p "$1"
@@ -105,23 +116,28 @@ function test_setup_helper() {
     # Create a submodule repository
     mkdir subrepo
     pushd subrepo
-    echo b > b
     git init
-    git add -A
-    git commit -m "First commit"
+    for ((i=1; i<=LEVEL; i++)); do
+        echo a-sub$i > a-sub$i
+        git add -A
+        git commit -m "commit sub$i"
+        eval export SUBREPO_HEAD$i=$(git rev-parse HEAD)
+    done
     export SUBREPO_HEAD=$(git rev-parse HEAD)
     popd
 
     # Create a second repository, with repo above as submodule
     mkdir repo
     pushd repo
-    echo a > a
     git init
-    git add -A
-    git commit -m "First commit"
     git submodule add ../subrepo
-    git add -A
     git commit -m "Add 'subrepo' as submodule "
+    for ((i=1; i<=LEVEL; i++)); do
+        echo a-$i > a-$i
+        git add -A
+        git commit -m "commit $i"
+        eval export REPO_HEAD$i=$(git rev-parse HEAD)
+    done
     export REPO_HEAD=$(git rev-parse HEAD)
     popd
 
@@ -196,8 +212,53 @@ pushd cpu2
 try_subundle unbundle ../repo.bundle
 test_if_exists_dir repo
 test_if_setup_ok repo
+test_if_remote_url_ok repo bundle $(readlink -m ../repo.bundle)
+test_if_remote_url_ok repo/subrepo bundle $(readlink -m ../repo_subrepo.bundle)
 popd
 
+test_new "Basic subundle restore (specifying destination)"
+test_setup cpu1
+try_subundle create cpu1/repo
+pushd cpu2
+try_subundle unbundle ../repo.bundle myrepo
+test_if_exists_dir myrepo
+test_if_setup_ok myrepo
+test_if_remote_url_ok myrepo bundle $(readlink -m ../repo.bundle)
+test_if_remote_url_ok myrepo/subrepo bundle $(readlink -m ../repo_subrepo.bundle)
+popd
 
+test_new "Basic subundle restore (specifying bundle remote name)"
+test_setup cpu1
+try_subundle create cpu1/repo
+pushd cpu2
+try_subundle -b mybundle unbundle ../repo.bundle
+test_if_exists_dir repo
+test_if_setup_ok repo
+test_if_remote_url_ok repo mybundle $(readlink -m ../repo.bundle)
+test_if_remote_url_ok repo/subrepo mybundle $(readlink -m ../repo_subrepo.bundle)
+popd
 
+test_new "Restore on existing repo"
+test_setup cpu1 2
+cp -r cpu1/repo cpu2
+try_subundle create cpu1/repo
+pushd cpu2
+try_subundle unbundle ../repo.bundle
+test_if_exists_dir repo
+test_if_setup_ok repo
+test_if_remote_url_ok repo bundle $(readlink -m ../repo.bundle)
+test_if_remote_url_ok repo/subrepo bundle $(readlink -m ../repo_subrepo.bundle)
+popd
+
+test_new "Restore on existing repo (custom remote name)"
+test_setup cpu1 2
+cp -r cpu1/repo cpu2
+try_subundle create cpu1/repo
+pushd cpu2
+try_subundle -b mybundle unbundle ../repo.bundle
+test_if_exists_dir repo
+test_if_setup_ok repo
+test_if_remote_url_ok repo mybundle $(readlink -m ../repo.bundle)
+test_if_remote_url_ok repo/subrepo mybundle $(readlink -m ../repo_subrepo.bundle)
+popd
 
