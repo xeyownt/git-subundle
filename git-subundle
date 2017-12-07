@@ -60,21 +60,21 @@ function do_create()
         if git show-ref bundle &> /dev/null; then
             # Reference 'bundle' exists
             echo "Reference 'bundle' found."
-            try git branch bundlehead
+            try git branch -f bundlehead
             if [ -n "$ALL" ]; then
                 try git bundle create "${BUNDLE_FILE}" --all bundle..
             else
                 try git bundle create "${BUNDLE_FILE}" bundle..$branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$branch$/d" | sed -r "s/^/bundle../")
             fi
-            try git branch -d bundlehead
+            try git branch -D bundlehead
         else
-            try git branch bundlehead
+            try git branch -f bundlehead
             if [ -n "$ALL" ]; then
                 try git bundle create "${BUNDLE_FILE}" --all
             else
                 try git bundle create "${BUNDLE_FILE}" $branch $(git show-ref --heads --head|cut -d' ' -f2|sed -r "/^(refs\/heads\/)?$branch$/d")
             fi
-            try git branch -d bundlehead
+            try git branch -D bundlehead
         fi
         try git tag -f bundle HEAD
         popd
