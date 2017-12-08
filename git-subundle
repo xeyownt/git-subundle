@@ -168,29 +168,29 @@ NAME
         $BASE - Create bundle including submodules.
 
 SYNOPSYS
-        $BASE [-h] [-b <name>] create [REPOSITORY] [BUNDLE_FILE]
-        $BASE [-h] [-b <name>] unbundle [REPOSITORY] [BUNDLE_FILE]
-        $BASE [-h] [-b <name>] reset [REPOSITORY]
+        $BASE [-hd] [-b <name>] create <repository> [<bundle_file>]
+        $BASE [-hd] [-b <name>] unbundle <bundle_file> [<repository>]
+        $BASE [-hd] [-b <name>] reset <repository>
 
 DESCRIPTION
-        Create bundle 'BUNDLE_FILE.bundle' that contains also submodules.
+        Create bundle '<bundle_file>.bundle' that contains also submodules.
 
         -b <name>
                 Use <name> as bundle remote name. If omitted, the default
                 remote name is 'bundle'.
 
-        -h
-                Print this help.
-
         -d
                 Debug output.
+
+        -h
+                Print this help.
 
 SEE ALSO
         git-bundle(1).
 __END__
 }
 
-SYNOPSYS="$BASE [-hv] [-b <name>] create|unbundle|reset [BUNDLE_FILE] [REPOSITORY]"
+SYNOPSYS="$BASE [-dh] [-b <name>] create|unbundle|reset <bundle_file>|<repository>"
 
 getOptions() {
     BUNDLE_REMOTE=bundle
