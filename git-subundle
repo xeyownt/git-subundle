@@ -95,7 +95,12 @@ function do_unbundle_helper()
             else
                 # Bundle remote found. Make sure URL points to our BUNDLE_FILE
                 if ! git remote -v | egrep -q "^$BUNDLE_REMOTE[[:space:]]+$BUNDLE_FILE"; then
-                    die 1 "Remote '$BUNDLE_REMOTE' exists but has the wrong URL. Aborting."
+                    if [ -n "$FORCE" ]; then
+                        # Force mode, we overwrite existing remote
+                        try git remote set-url $BUNDLE_REMOTE "$BUNDLE_FILE"
+                    else
+                        die 1 "Remote '$BUNDLE_REMOTE' exists but has the wrong URL. Aborting."
+                    fi
                 fi
             fi
             try git -c fetch.prune=false fetch $BUNDLE_REMOTE
@@ -123,7 +128,12 @@ function do_unbundle_helper()
             else
                 # Remote bundle found. Make sure URL points to our BUNDLE_FILE
                 if ! git remote -v | egrep -q "^$BUNDLE_REMOTE[[:space:]]+$BUNDLE_FILE"; then
-                    die 1 "Remote '$BUNDLE_REMOTE' exists but has the wrong URL."
+                    if [ -n "$FORCE" ]; then
+                        # Force mode, we overwrite existing remote
+                        try git remote set-url $BUNDLE_REMOTE "$BUNDLE_FILE"
+                    else
+                        die 1 "Remote '$BUNDLE_REMOTE' exists but has the wrong URL. Aborting."
+                    fi
                 fi
             fi
             try git -c fetch.prune=false fetch --recurse-submodules=no $BUNDLE_REMOTE
@@ -182,6 +192,9 @@ DESCRIPTION
         -d
                 Debug output.
 
+        -f
+                Don't complain if a remote with different URL exists already.
+
         -h
                 Print this help.
 
@@ -190,17 +203,20 @@ SEE ALSO
 __END__
 }
 
-SYNOPSYS="$BASE [-dh] [-b <name>] create|unbundle|reset <bundle_file>|<repository>"
+SYNOPSYS="$BASE [-dfh] [-b <name>] create|unbundle|reset <bundle_file>|<repository>"
 
 getOptions() {
     BUNDLE_REMOTE=bundle
     DEBUG=
-    while getopts "b:hd" flag
+    FORCE=
+    while getopts "b:dfh" flag
     do
         case $flag in 
             b) BUNDLE_REMOTE=$OPTARG
                 ;;
             d) DEBUG=true
+                ;;
+            f) FORCE=true
                 ;;
             h) usage_help
                 exit 0
