@@ -44,6 +44,7 @@ Example
     # On first PC
     git subundle create repo
     tar czf bundle.tgz *.bundle
+    rm *.bundle
     ```
 
 *   Transfer `bundle.tgz` to remote PC. Then:
@@ -52,7 +53,7 @@ Example
     # On remote PC
     tar xf bundle.tgz
     git subundle -f unbundle repo
-    rm bundle.tgz
+    rm bundle.tgz *.bundle
     ```
 
 *   After creating some commit on the remote PC, we transfer back the changes to the source PC. 
@@ -62,6 +63,7 @@ Example
     # On remote PC
     git subundle create repo
     tar czf bundle.tgz *.bundle
+    rm *.bundle
     ```
 
 *   We import the changes on the source PC. From that point on, creating a new bundle on the source PC
@@ -71,7 +73,7 @@ Example
     # On source PC
     tar xf bundle.tgz
     git subundle -f unbundle repo
-    rm bundle.tgz
+    rm bundle.tgz *.bundle
     ```
 
 Tests
