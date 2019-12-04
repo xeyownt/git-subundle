@@ -180,9 +180,9 @@ NAME
         $BASE - Create bundle including submodules.
 
 SYNOPSYS
-        $BASE [-hd] [-b <name>] create <repository> [<bundle_file>]
-        $BASE [-hd] [-b <name>] unbundle <bundle_file> [<repository>]
-        $BASE [-hd] [-b <name>] reset <repository>
+        $BASE [-dfhw] [-b <name>] create <repository> [<bundle_file>]
+        $BASE [-dfhw] [-b <name>] unbundle <bundle_file> [<repository>]
+        $BASE [-dfhw] [-b <name>] reset <repository>
 
 DESCRIPTION
         Create bundle '<bundle_file>.bundle' that contains also submodules.
