@@ -35,6 +35,45 @@ Check `git subundle -h` for usage:
     SEE ALSO
             git-bundle(1).
 
+Example
+=======
+
+*   First create a bundle on the source PC. This assumes a git repository named `repo`:
+
+    ```bash
+    # On first PC
+    git subundle create repo
+    tar czf bundle.tgz *.bundle
+    ```
+
+*   Transfer `bundle.tgz` to remote PC. Then:
+
+    ```bash
+    # On remote PC
+    tar xf bundle.tgz
+    git subundle -f unbundle repo
+    rm bundle.tgz
+    ```
+
+*   After creating some commit on the remote PC, we transfer back the changes to the source PC. 
+    This will only transfer the new commits
+
+    ```bash
+    # On remote PC
+    git subundle create repo
+    tar czf bundle.tgz *.bundle
+    ```
+
+*   We import the changes on the source PC. From that point on, creating a new bundle on the source PC
+    will only include new commits not available on the remote PC
+
+    ```bash
+    # On source PC
+    tar xf bundle.tgz
+    git subundle -f unbundle repo
+    rm bundle.tgz
+    ```
+
 Tests
 =====
 The package come with some basic tests. Run `make test` to run them.
