@@ -145,6 +145,8 @@ function do_unbundle_helper()
         fi
     fi
 
+    [ -n "$WAIT" ] && read -p "Press enter to continue... " DISCARDED
+
     return 0
 }
 
@@ -185,6 +187,13 @@ SYNOPSYS
 DESCRIPTION
         Create bundle '<bundle_file>.bundle' that contains also submodules.
 
+        If you get the following error:
+
+            error: pathspec '...' did not match any file(s) known to git
+
+        Try again with option '-w', and change the branch of parent repository
+        so that module is defined in that branch (in file .gitmodules).
+
         -b <name>
                 Use <name> as bundle remote name. If omitted, the default
                 remote name is 'bundle'.
@@ -198,18 +207,22 @@ DESCRIPTION
         -h
                 Print this help.
 
+        -w
+                Wait after each unbundle.
+
 SEE ALSO
         git-bundle(1).
 __END__
 }
 
-SYNOPSYS="$BASE [-dfh] [-b <name>] create|unbundle|reset <bundle_file>|<repository>"
+SYNOPSYS="$BASE [-dfhw] [-b <name>] create|unbundle|reset <bundle_file>|<repository>"
 
 getOptions() {
     BUNDLE_REMOTE=bundle
     DEBUG=
     FORCE=
-    while getopts "b:dfh" flag
+    WAIT=
+    while getopts "b:dfhw" flag
     do
         case $flag in 
             b) BUNDLE_REMOTE=$OPTARG
@@ -220,6 +233,8 @@ getOptions() {
                 ;;
             h) usage_help
                 exit 0
+                ;;
+            w) WAIT=true
                 ;;
             *) die_usage "Unknown option."
         esac
